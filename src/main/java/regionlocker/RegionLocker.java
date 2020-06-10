@@ -158,7 +158,7 @@ public class RegionLocker {
         return type == RegionTypes.BLACKLISTED;
     }
 
-    public String getActiveRegion(){
+    public static String getActiveRegion(){
         Map<String, RegionTypes> regionSet = regions;
 
         for (HashMap.Entry<String, RegionTypes> region : regionSet.entrySet()) {
@@ -168,7 +168,7 @@ public class RegionLocker {
         return null;
     }
 
-    public ArrayList<Integer> getUnlockedRegions(){
+    public static ArrayList<Integer> getUnlockedRegions(){
         Map<String, RegionTypes> regionSet = regions;
         ArrayList<Integer> unlockedRegions = new ArrayList<>();
 

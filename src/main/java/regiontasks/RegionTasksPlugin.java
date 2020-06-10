@@ -9,24 +9,26 @@ import net.runelite.api.Skill;
 import net.runelite.api.events.InteractingChanged;
 import net.runelite.client.config.ConfigManager;
 import net.runelite.client.eventbus.Subscribe;
+import net.runelite.client.events.ConfigChanged;
 import net.runelite.client.plugins.Plugin;
 import net.runelite.client.plugins.PluginDescriptor;
 import regionlocker.RegionLocker;
 import regionlocker.RegionLockerConfig;
 import net.runelite.client.ui.overlay.OverlayManager;
+import regionlocker.RegionLockerPlugin;
 
 import javax.inject.Inject;
 import java.util.ArrayList;
 
 @Slf4j
 @PluginDescriptor(
-        name = "Region Tasks",
+        name = RegionTasksPlugin.PLUGIN_NAME,
         description = "Region Tasks"
 )
 
 public class RegionTasksPlugin extends Plugin {
-
-    public MapSquare activeMapSquare;
+    static final String PLUGIN_NAME = "Region Tasks";
+    public static final String CONFIG_KEY = "regiontasks";
 
     @Inject
     private Client client;
@@ -38,7 +40,16 @@ public class RegionTasksPlugin extends Plugin {
     private RegionTasksOverlay regionTasksOverlay;
 
     @Inject
+    private RegionTasksConfig config;
+
+    @Inject
     private RegionLocker regionLocker;
+
+    @Provides
+    RegionTasksConfig provideConfigAlso(ConfigManager configManager)
+    {
+        return configManager.getConfig(RegionTasksConfig.class);
+    }
 
     @Provides
     RegionLockerConfig provideConfig(ConfigManager configManager)
@@ -46,17 +57,25 @@ public class RegionTasksPlugin extends Plugin {
         return configManager.getConfig(RegionLockerConfig.class);
     }
 
-    private ArrayList<Integer> unlockedMapSquares = regionLocker.getUnlockedRegions();
-    private ArrayList<Quest> completedQuests;
-    private ArrayList<Quest> startedQuests;
-    private ArrayList<Skill> unlockedSkills;
+    public MapSquare activeMapSquare;
+    private ArrayList<Integer> unlockedMapSquares = RegionLocker.getUnlockedRegions();
+    private static ArrayList<Quest> completedQuests = new ArrayList<>();
+    private static ArrayList<Quest> startedQuests = new ArrayList<>();
+    private static ArrayList<Skill> unlockedSkills = new ArrayList<>();
+
+    private static boolean showSkillingTasks;
+    private static boolean showItemTasks;
+    private static boolean showQuestTasks;
+    private static boolean showDiaryTasks;
 
     @Override
     public void startUp(){
         overlayManager.add(regionTasksOverlay);
         MapSquare.setPlugin(this);
         ItemSourceSet.setPlugin(this);
+        SkillingGoal.setPlugin(this);
         QuestGoal.setPlugin(this);
+        DiaryGoal.setPlugin(this);
     }
 
     @Override
@@ -65,62 +84,95 @@ public class RegionTasksPlugin extends Plugin {
     }
 
     @Subscribe
+    public void onConfigChanged(ConfigChanged event)
+    {
+        if (!event.getGroup().equals(CONFIG_KEY)) { return; }
+        readConfig();
+    }
+
+    private void readConfig() {
+        showSkillingTasks = config.showSkillingTasks();
+        showItemTasks = config.showItemTasks();
+        showQuestTasks = config.showQuestTasks();
+        showDiaryTasks = config.showDiaryTasks();
+    }
+
+    @Subscribe
     public void onInteractingChanged(InteractingChanged event){
+        readConfig();
         int activeMapSquareID = getMapSquareID();
         activeMapSquare = getMapSquareInfo(activeMapSquareID);
-        unlockedMapSquares = regionLocker.getUnlockedRegions();
-        completedQuests = updateCompletedQuests();
-        startedQuests = updateStartedQuests();
-        unlockedSkills = updateUnlockedSkills(activeMapSquareID,unlockedMapSquares);
+        unlockedMapSquares = RegionLocker.getUnlockedRegions();
+        updateCompletedQuests();
+        updateStartedQuests();
+        updateUnlockedSkills();
     }
 
     public int getMapSquareID() {
-        return Integer.parseInt(regionLocker.getActiveRegion());
+        return Integer.parseInt(RegionLocker.getActiveRegion());
     }
 
     public MapSquare getMapSquareInfo(int regionID){
         return MapSquare.forId(regionID);
     }
 
+    public MapSquare getActiveMapSquare() {
+        return activeMapSquare;
+    }
+
     public ArrayList<Integer> getUnlockedMapSquares() {
         return unlockedMapSquares;
     }
 
-    public ArrayList<Quest> getCompletedQuests() {
-        return completedQuests;
+    public static boolean doShowSkillingTasks() {
+        return showSkillingTasks;
     }
 
-    public ArrayList<Quest> updateCompletedQuests(){
+    public static boolean doShowItemTasks() {
+        return showItemTasks;
+    }
+
+    public static boolean doShowQuestTasks() {
+        return showQuestTasks;
+    }
+
+    public static boolean doShowDiaryTasks() {
+        return showDiaryTasks;
+    }
+
+    public static ArrayList<Quest> getCompletedQuests() {
+        return RegionTasksPlugin.completedQuests;
+    }
+
+    public void updateCompletedQuests(){
         ArrayList<Quest> completedQuests = new ArrayList<>();
         for (Quest quest : Quest.values()){
             if (quest.getState(client) == QuestState.FINISHED){
                 completedQuests.add(quest);
             }
         }
-        return completedQuests;
+        RegionTasksPlugin.completedQuests = completedQuests;
     }
 
-    public ArrayList<Quest> getStartedQuests() {
+    public static ArrayList<Quest> getStartedQuests() {
         return startedQuests;
     }
 
-    public ArrayList<Quest> updateStartedQuests(){
+    public void updateStartedQuests(){
         ArrayList<Quest> startedQuests = new ArrayList<>();
         for (Quest quest : Quest.values()){
-            if (quest.getState(client) == QuestState.IN_PROGRESS){
+            if (quest.getState(client) == QuestState.IN_PROGRESS || quest.getState(client) == QuestState.FINISHED){
                 startedQuests.add(quest);
             }
         }
-        return startedQuests;
+        RegionTasksPlugin.startedQuests = startedQuests;
     }
 
-    public ArrayList<Skill> getUnlockedSkills() {
-        return unlockedSkills;
+    public static ArrayList<Skill> getUnlockedSkills() {
+        return RegionTasksPlugin.unlockedSkills;
     }
 
-    public ArrayList<Skill> updateUnlockedSkills(int activeMapSquare, ArrayList<Integer> unlockedMapSquares) {
-        unlockedMapSquares.add(activeMapSquare);
-
+    public void updateUnlockedSkills() {
         ArrayList<Skill> unlockedSkills = new ArrayList<>();
 
         for (Integer squareId : unlockedMapSquares){
@@ -133,6 +185,6 @@ public class RegionTasksPlugin extends Plugin {
                 }
             }
         }
-        return unlockedSkills;
+        RegionTasksPlugin.unlockedSkills = unlockedSkills;
     }
 }

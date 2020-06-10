@@ -5,12 +5,11 @@ import lombok.Getter;
 import net.runelite.api.Skill;
 import net.runelite.client.plugins.Plugin;
 
-import javax.annotation.Nullable;
-import javax.swing.plaf.synth.Region;
 import java.util.*;
 
 import static regiontasks.SkillingGoalID.*;
-//import static regiontasks.QuestGoalID.*;
+import static regiontasks.QuestGoalID.*;
+import static regiontasks.DiaryGoalID.*;
 
 @Getter
 public class MapSquare {
@@ -200,6 +199,7 @@ public class MapSquare {
             new MapSquare(10551, "Fremennik Road"),
             new MapSquare(10552, "Fremennik Province"),
             new MapSquare(10553, "Rellekka"),
+            new MapSquare(10554, "Rellekka Rocks"),
             new MapSquare(10558, "South Iceberg"),
             new MapSquare(10559, "North Iceberg"),
             new MapSquare(10794, "West Ape Atoll"),
@@ -340,9 +340,9 @@ public class MapSquare {
             new MapSquare(12850, "Lumbridge Castle",
                     new ArrayList<>(Arrays.asList(ATTA_MITHRIL_BATTLEAXE, COOK_FRIED_ONIONS, FIRE_YEW_LOGS, FISH_SALMON, FLET_YEW_LOGS, WOOD_YEW_LOGS)),
                     new ArrayList<>(),
-                    new ArrayList<>(),
-                    new ArrayList<>(),
-                    new ArrayList<>()),
+                    new ArrayList<>(Arrays.asList(COOKS_ASSISTANT_START, THE_LOST_TRIBE_START, THE_RESTLESS_GHOST_START, RUNE_MYSTERIES_START, X_MARKS_THE_SPOT_START)),
+                    new ArrayList<>(Arrays.asList(LUMB_EASY_5, LUMB_EASY_6, LUMB_EASY_7, LUMB_EASY_10, LUMB_MEDIUM_5, LUMB_MEDIUM_6)),
+                    new ArrayList<>(Arrays.asList(Skill.ATTACK, Skill.CRAFTING, Skill.DEFENCE, Skill.FIREMAKING, Skill.FLETCHING, Skill.MAGIC, Skill.PRAYER, Skill.RANGED, Skill.STRENGTH, Skill.THIEVING, Skill.WOODCUTTING))),
 
             new MapSquare(12851, "Groats' Farm"),
             new MapSquare(12852, "Varrock South Gate"),
@@ -460,11 +460,11 @@ public class MapSquare {
     private final String locationName;
     private static Plugin plugin;
 
-    private ArrayList<Integer> skillingGoals;
-    private ArrayList<Integer> itemGoals;
-    private ArrayList<Integer> questGoals;
-    private ArrayList<Integer> diaryGoals;
-    private ArrayList<Skill> availableTrainingMethods;
+    private ArrayList<Integer> skillingGoals = new ArrayList<>();
+    private ArrayList<Integer> itemGoals = new ArrayList<>();
+    private ArrayList<Integer> questGoals = new ArrayList<>();
+    private ArrayList<Integer> diaryGoals = new ArrayList<>();
+    private ArrayList<Skill> availableTrainingMethods = new ArrayList<>();
 
     private MapSquare(int id, String locationName, ArrayList<Integer> skillingGoals, ArrayList<Integer> itemGoals, ArrayList<Integer> questGoals, ArrayList<Integer> diaryGoals, ArrayList<Skill> availableTrainingMethods) {
         this.id = id;
@@ -496,5 +496,35 @@ public class MapSquare {
             }
         }
         return null;
+    }
+
+    public ArrayList<Integer> getEligibleSkillingGoals() {
+        ArrayList<Integer> eligibleSkillingGoals = new ArrayList<>();
+        for (Integer skillingGoalId : skillingGoals) {
+            SkillingGoal skillingGoal = SkillingGoal.task(skillingGoalId);
+            if (skillingGoal.isSkillRequirementsComplete() && skillingGoal.isQuestRequirementsComplete() && skillingGoal.isItemRequirementsComplete())
+                eligibleSkillingGoals.add(skillingGoalId);
+        }
+        return eligibleSkillingGoals;
+    }
+
+    public ArrayList<Integer> getEligibleQuestGoals() {
+        ArrayList<Integer> eligibleQuestGoals = new ArrayList<>();
+        for (Integer questGoalId : questGoals) {
+            QuestGoal questGoal = QuestGoal.task(questGoalId);
+            if (questGoal.isSkillRequirementsComplete() && questGoal.isQuestRequirementsComplete() && questGoal.isItemRequirementsComplete())
+                eligibleQuestGoals.add(questGoalId);
+        }
+        return eligibleQuestGoals;
+    }
+
+    public ArrayList<Integer> getEligibleDiaryGoals() {
+        ArrayList<Integer> eligibleDiaryGoals = new ArrayList<>();
+        for (Integer diaryGoalId : diaryGoals) {
+            DiaryGoal diaryGoal = DiaryGoal.task(diaryGoalId);
+            if (diaryGoal.isSkillRequirementsComplete() && diaryGoal.isQuestRequirementsComplete() && diaryGoal.isItemRequirementsComplete())
+                eligibleDiaryGoals.add(diaryGoalId);
+        }
+        return eligibleDiaryGoals;
     }
 }

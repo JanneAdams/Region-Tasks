@@ -1,11 +1,15 @@
 package regiontasks;
 
 import com.google.common.collect.ImmutableSet;
+import net.runelite.api.Quest;
 import net.runelite.api.Skill;
-import net.runelite.client.plugins.Plugin;
 
 import static regiontasks.SkillingGoalID.*;
+import static regiontasks.ItemSourceSet.*;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.Set;
 
 public class SkillingGoal{
@@ -16,27 +20,44 @@ public class SkillingGoal{
             //Attack
             new SkillingGoal(ATTA_MITHRIL_BATTLEAXE, "Wield a Mithril battleaxe", Skill.ATTACK, 20),
             //Cooking
-            new SkillingGoal(COOK_FRIED_ONIONS, "Cook Fried onions", Skill.COOKING, 42),
+            new SkillingGoal(COOK_FRIED_ONIONS, "Cook Fried onions", Skill.COOKING, 42, null, new ArrayList<>(Arrays.asList(Skill.COOKING)),null),
             //Firemaking
-            new SkillingGoal(FIRE_YEW_LOGS, "Burn Yew logs", Skill.FIREMAKING, 60),
+            new SkillingGoal(FIRE_YEW_LOGS, "Burn Yew logs", Skill.FIREMAKING, 60, null, new ArrayList<>(Arrays.asList(Skill.FIREMAKING)), new ArrayList<>(Arrays.asList(TINDERBOX))),
             //Fishing
-            new SkillingGoal(FISH_SALMON, "Fish a Raw salmon", Skill.FISHING, 30),
+            new SkillingGoal(FISH_SALMON, "Fish a Raw salmon", Skill.FISHING, 30, null, new ArrayList<>(Arrays.asList(Skill.FISHING)), new ArrayList<>(Arrays.asList(FLY_FISHING_ROD))),
             //Fletching
-            new SkillingGoal(FLET_YEW_LOGS, "Fletch Yew logs", Skill.FLETCHING, 60),
+            new SkillingGoal(FLET_YEW_LOGS, "Fletch Yew logs", Skill.FLETCHING, 60, null, new ArrayList<>(Arrays.asList(Skill.FLETCHING)), new ArrayList<>(Arrays.asList(KNIFE))),
             //Woodcutting
-            new SkillingGoal(WOOD_YEW_LOGS, "Chop Yew logs", Skill.WOODCUTTING, 60)
+            new SkillingGoal(WOOD_YEW_LOGS, "Chop Yew logs", Skill.WOODCUTTING, 60, null, null, null)
     );
 
     private final int id;
     private final String text;
     private final Skill skill;
     private final int level;
+    private boolean questRequirementsComplete = true;
+    private boolean skillRequirementsComplete = true;
+    private boolean itemRequirementsComplete = true;
 
     private SkillingGoal(int id, String text, Skill skill, int level){
         this.id = id;
         this.text = text;
         this.skill = skill;
         this.level = level;
+    }
+
+    private SkillingGoal(int id, String text, Skill skill, int level, ArrayList<Quest> questRequirements, ArrayList<Skill> skillRequirements, ArrayList<Integer> itemRequirements){
+        this.id = id;
+        this.text = text;
+        this.skill = skill;
+        this.level = level;
+        if (questRequirements != null){ this.questRequirementsComplete = questRequirementsCheck(questRequirements); }
+        if (skillRequirements != null){ this.skillRequirementsComplete = skillRequirementsCheck(skillRequirements); }
+        if (itemRequirements != null){ this.itemRequirementsComplete = itemRequirementsCheck(itemRequirements); }
+    }
+
+    public static void setPlugin(RegionTasksPlugin plugin) {
+        SkillingGoal.plugin = plugin;
     }
 
     public int getId() {
@@ -53,6 +74,48 @@ public class SkillingGoal{
 
     public int getLevel() {
         return level;
+    }
+
+    public boolean isQuestRequirementsComplete() {
+        return questRequirementsComplete;
+    }
+
+    public boolean isSkillRequirementsComplete() {
+        return skillRequirementsComplete;
+    }
+
+    public boolean isItemRequirementsComplete() {
+        return itemRequirementsComplete;
+    }
+
+    private boolean questRequirementsCheck(ArrayList<Quest> questRequirements) {
+        ArrayList<Quest> completedQuests = RegionTasksPlugin.getCompletedQuests();
+        if (!Collections.disjoint(completedQuests, questRequirements)) {
+            for (Quest quest : questRequirements) {
+                if (!completedQuests.contains(quest)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean skillRequirementsCheck(ArrayList<Skill> skillRequirements) {
+        ArrayList<Skill> unlockedSkills = RegionTasksPlugin.getUnlockedSkills();
+        if (!Collections.disjoint(unlockedSkills, skillRequirements)) {
+            for (Skill skill : skillRequirements) {
+                if (!unlockedSkills.contains(skill)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private boolean itemRequirementsCheck(ArrayList<Integer> itemRequirements) {
+        return ItemRequirementChecker.checkIfRequiredItemsAreAvailable(itemRequirements);
     }
 
     public static SkillingGoal task(int id){
